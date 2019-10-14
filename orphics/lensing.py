@@ -131,7 +131,7 @@ def alpha_from_kappa(kappa=None,posmap=None,phi=None):
 
 
 class FlatLensingSims(object):
-    def __init__(self,shape,wcs,theory,beam_arcmin,noise_uk_arcmin,noise_e_uk_arcmin=None,noise_b_uk_arcmin=None,pol=False,fixed_lens_kappa=None):
+    def __init__(self,shape,wcs,theory,beam_arcmin,noise_uk_arcmin,noise_e_uk_arcmin=None,noise_b_uk_arcmin=None,pol=False,fixed_lens_kappa=None, tautauspec=None):
         # assumes theory in uK^2
         from orphics import cosmology
         if len(shape)<3 and pol: shape = (3,)+shape
@@ -162,6 +162,10 @@ class FlatLensingSims(object):
             ps_noise[2,2] = (noise_b_uk_arcmin*np.pi/180./60.)**2.
         self.ngen = maps.MapGen(shape,wcs,ps_noise)
         self.ps_noise = ps_noise
+        if tautauspec is not None:
+            # tautau spec must be stripped of prefactors before input
+            ps_tautau = tautauspec.reshape(1, 1, tautauspec.size)
+            self.taugen = maps.MapGen(shape[-2:], wcs, ps_tautau)
 
     def update_kappa(self,kappa):
         self.kappa = kappa
@@ -171,8 +175,14 @@ class FlatLensingSims(object):
         return self.mgen.get_map(seed=seed)
     def get_kappa(self,seed=None):
         return self.kgen.get_map(seed=seed)
-    def get_sim(self,seed_cmb=None,seed_kappa=None,seed_noise=None,lens_order=5,return_intermediate=False,skip_lensing=False,cfrac=None):
+    def get_tau_map(self, seed=None):
+        return self.taugen.get_map(seed=seed)
+    def get_sim(self,seed_cmb=None,seed_kappa=None,seed_noise=None,seed_tau=None,lens_order=5,return_intermediate=False,skip_lensing=False,cfrac=None, tauincl=False):
         unlensed = self.get_unlensed(seed_cmb)
+        if tauincl:
+            tau_map = self.get_tau_map(seed_tau)
+            e_neg_tau = np.exp(-1 * tau_map)
+            unlensed *= e_neg_tau
         if skip_lensing:
             lensed = unlensed
             kappa = enmap.samewcs(lensed.copy()[0]*0,lensed)
@@ -190,7 +200,9 @@ class FlatLensingSims(object):
         
         observed = beamed + noise_map
         
-        if return_intermediate:
+        if return_intermediate and tauincl:
+            return [ maps.get_central(x,cfrac) for x in [unlensed,tau_map,kappa,lensed,beamed,noise_map,observed] ]
+        elif return_intermediate:
             return [ maps.get_central(x,cfrac) for x in [unlensed,kappa,lensed,beamed,noise_map,observed] ]
         else:
             return maps.get_central(observed,cfrac)
