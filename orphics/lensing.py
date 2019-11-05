@@ -131,7 +131,7 @@ def alpha_from_kappa(kappa=None,posmap=None,phi=None):
 
 
 class FlatLensingSims(object):
-    def __init__(self,shape,wcs,theory,beam_arcmin,noise_uk_arcmin,noise_e_uk_arcmin=None,noise_b_uk_arcmin=None,pol=False,fixed_lens_kappa=None, tautauspec=None):
+    def __init__(self,shape,wcs,theory,beam_arcmin,noise_uk_arcmin,noise_e_uk_arcmin=None,noise_b_uk_arcmin=None,pol=False,fixed_lens_kappa=None, tautauspec=None, kappa_ps_fac=1):
         # assumes theory in uK^2
         from orphics import cosmology
         if len(shape)<3 and pol: shape = (3,)+shape
@@ -149,7 +149,7 @@ class FlatLensingSims(object):
             self.alpha = alpha_from_kappa(self.kappa)
         else:
             self._fixed = False
-            ps_kk = theory.gCl('kk',self.modlmap).reshape((1,1,Ny,Nx))
+            ps_kk = theory.gCl('kk',self.modlmap).reshape((1,1,Ny,Nx)) * kappa_ps_fac
             self.kgen = maps.MapGen(shape[-2:],wcs,ps_kk)
             self.posmap = enmap.posmap(shape[-2:],wcs)
             self.ps_kk = ps_kk
