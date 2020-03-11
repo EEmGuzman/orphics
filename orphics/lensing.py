@@ -164,7 +164,7 @@ class FlatLensingSims(object):
         self.ps_noise = ps_noise
         if tautauspec is not None:
             # tautau spec must be stripped of prefactors before input
-            ps_tautau = tautauspec.reshape(1, 1, tautauspec.size)
+            ps_tautau = theory.gCl('tautau', self.modlmap).reshape((1,1,Ny,Nx))
             self.taugen = maps.MapGen(shape[-2:], wcs, ps_tautau)
 
     def update_kappa(self,kappa):
