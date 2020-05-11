@@ -1,4 +1,5 @@
 from __future__ import print_function 
+import contextlib
 from pixell import enmap, utils, resample
 import numpy as np
 from pixell.fft import fft,ifft
@@ -329,12 +330,24 @@ def downsample_power(shape,wcs,cov,ndown=16,order=0,exp=None,fftshift=True,fft=F
     return ilogfunc(aifftshift(retcov))
     
 
+@contextlib.contextmanager
+def temporary_seed(seed):
+    """
+    Temporary random seed instance for map generation
+    """
+    state = np.random.get_state()
+    np.random.seed(seed)
+    try:
+        yield
+    finally:
+        np.random.set_state(state)
+
 class MapGen(object):
         """
         Once you know the shape and wcs of an ndmap and the input power spectra, you can 
         pre-calculate some things to speed up random map generation.
         """
-        
+
         def __init__(self,shape,wcs,cov=None,covsqrt=None,pixel_units=False,smooth="auto",ndown=None,order=1):
                 self.shape = shape
                 self.wcs = wcs
@@ -353,17 +366,21 @@ class MapGen(object):
 
 
         def get_map(self,seed=None,scalar=False,iau=True,real=False):
-                if seed is not None: np.random.seed(seed)
-                rand = enmap.fft(enmap.rand_gauss(self.shape, self.wcs)) if real else enmap.rand_gauss_harm(self.shape, self.wcs)
-                data = enmap.map_mul(self.covsqrt, rand)
-                kmap = enmap.ndmap(data, self.wcs)
+                if seed is not None:
+                    with temporary_seed(seed):
+                        rand = enmap.fft(enmap.rand_gauss(self.shape, self.wcs)) if real else enmap.rand_gauss_harm(self.shape, self.wcs)
+                        data = enmap.map_mul(self.covsqrt, rand)
+                        kmap = enmap.ndmap(data, self.wcs)
+                else:
+                    rand = enmap.fft(enmap.rand_gauss(self.shape, self.wcs)) if real else enmap.rand_gauss_harm(self.shape, self.wcs)
+                    data = enmap.map_mul(self.covsqrt, rand)
+                    kmap = enmap.ndmap(data, self.wcs)
                 if scalar:
                         return enmap.ifft(kmap).real
                 else:
                         return enmap.harm2map(kmap,iau=iau)
 
-        
-        
+
 def spec1d_to_2d(shape,wcs,ps):
     return enmap.spec2flat(shape,wcs,ps)/(np.prod(shape[-2:])/enmap.area(shape,wcs ))
     
