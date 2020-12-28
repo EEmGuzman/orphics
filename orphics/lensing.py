@@ -178,11 +178,13 @@ class FlatLensingSims(object):
     def get_tau_map(self, seed=None):
         return self.taugen.get_map(seed=seed)
     def get_sim(self,seed_cmb=None,seed_kappa=None,seed_noise=None,seed_tau=None,lens_order=5,return_intermediate=False,skip_lensing=False,cfrac=None, tauincl=False):
-        unlensed = self.get_unlensed(seed_cmb)
+        base_cmb = self.get_unlensed(seed_cmb)
         if tauincl:
             tau_map = self.get_tau_map(seed_tau)
-            e_neg_tau = np.exp(-1 * tau_map)
-            unlensed *= e_neg_tau
+            modulated_cmb = base_cmb * np.exp(-1 * tau_map)
+            unlensed = modulated_cmb
+        else:
+            unlensed = base_cmb
         if skip_lensing:
             lensed = unlensed
             kappa = enmap.samewcs(lensed.copy()[0]*0,lensed)
@@ -197,11 +199,11 @@ class FlatLensingSims(object):
             lensed = enlensing.displace_map(unlensed, self.alpha, order=lens_order)
         beamed = maps.filter_map(lensed,self.kbeam)
         noise_map = self.ngen.get_map(seed=seed_noise)
-        
+
         observed = beamed + noise_map
-        
+
         if return_intermediate and tauincl:
-            return [ maps.get_central(x,cfrac) for x in [unlensed,tau_map,kappa,lensed,beamed,noise_map,observed] ]
+            return [ maps.get_central(x,cfrac) for x in [base_cmb,tau_map,kappa,lensed,beamed,noise_map,observed] ]
         elif return_intermediate:
             return [ maps.get_central(x,cfrac) for x in [unlensed,kappa,lensed,beamed,noise_map,observed] ]
         else:
