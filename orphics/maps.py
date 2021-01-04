@@ -333,7 +333,9 @@ def downsample_power(shape,wcs,cov,ndown=16,order=0,exp=None,fftshift=True,fft=F
 @contextlib.contextmanager
 def temporary_seed(seed):
     """
-    Temporary random seed instance for map generation
+    Temporary random seed instance for map generation.
+    Function based on code by Paul Panzer from
+    https://stackoverflow.com/questions/49555991/can-i-create-a-local-numpy-random-seed
     """
     state = np.random.get_state()
     np.random.seed(seed)
